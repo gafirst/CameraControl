@@ -35,7 +35,7 @@ int main(){
 
     cout << "Found " << camera_details.size() << " cameras in config file." << endl;
 
-    boost::asio::io_service io_service;
+    boost::asio::io_context io_context;
 
     size_t joystick_count = static_cast<size_t>(Joystick::NumberOfConnectJoysticks());
 
@@ -53,7 +53,7 @@ int main(){
 
     for(size_t i = 0; i < joystick_count && i < camera_details.size(); ++i) {
         cout << "Assigning joystick " << i << " to camera " << camera_details[i].name << "(" << camera_details[i].ip_address << ")." << endl;
-        controllers.emplace_back(make_shared<Joystick>(i), make_shared<Camera>(camera_details[i].name, camera_details[i].ip_address, camera_details[i].default_preset, io_service));
+        controllers.emplace_back(make_shared<Joystick>(i), make_shared<Camera>(camera_details[i].name, camera_details[i].ip_address, camera_details[i].default_preset, io_context));
     }
 
     for(auto &controller : controllers) {
