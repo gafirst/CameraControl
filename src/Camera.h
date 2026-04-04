@@ -1,13 +1,14 @@
 #ifndef FIRST_CAMERACONTROL_CAMERA_H
 #define FIRST_CAMERACONTROL_CAMERA_H
 
+#include <chrono>
 #include <cstdint>
 #include <vector>
 #include <boost/asio.hpp>
 
 class Camera {
 public:
-    Camera(std::string name, std::string ip_address, uint8_t default_preset, boost::asio::io_service &io_service);
+    Camera(std::string name, std::string ip_address, uint8_t default_preset, boost::asio::io_context &io_context);
 
     ~Camera();
 
@@ -45,6 +46,9 @@ public:
 
     void zoom(ZoomType type);
 
+    /** Sony VISCA one-push AF; PTZ Optics may require a different command on some firmware. */
+    void one_push_autofocus();
+
     void stop();
 
     void reconnect();
@@ -76,13 +80,13 @@ private:
 
     uint8_t _default_preset;
 
-    boost::asio::io_service& _io_service;
+    boost::asio::io_context& _io_context;
     boost::asio::ip::tcp::socket _socket;
 
     void send_command(std::vector<uint8_t> command);
 
     void tcp_connect_with_timeout(const std::string& host, const std::string& service,
-                                  boost::posix_time::time_duration timeout);
+                                  std::chrono::milliseconds timeout);
 
 };
 

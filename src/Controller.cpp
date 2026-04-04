@@ -51,6 +51,7 @@ void Controller::axis_control() {
     auto tilt = _joystick->axis(1);
 
     auto speed = ((-1.0 * _joystick->axis(3)) + 1.0) / 2.0;
+    const double prev_speed_snapshot = _prev_speed;
 
     if(pan != _prev_pan || tilt != _prev_tilt || speed != _prev_speed) {
         Camera::RotateType type;
@@ -88,15 +89,25 @@ void Controller::axis_control() {
     _prev_tilt = tilt;
     _prev_speed = speed;
 
-    auto hat_state =_joystick->hat(0);
+    auto hat_state = _joystick->hat(0);
 
-    if(hat_state != _prev_hat) {
+    const bool hat_changed = (hat_state != _prev_hat);
+    const bool zoom_hat = (static_cast<int>(hat_state & Joystick::HatDirection::UP) > 0)
+                          || (static_cast<int>(hat_state & Joystick::HatDirection::DOWN) > 0);
+    const bool throttle_changed = (speed != prev_speed_snapshot);
+
+    if (hat_changed && hat_state == Joystick::HatDirection::LEFT) {
+        _camera->one_push_autofocus();
+        cout << setw(12) << _camera->name() << "\tOne-push autofocus\n";
+    }
+
+    if (hat_changed || (zoom_hat && throttle_changed)) {
         if (static_cast<int>(hat_state & Joystick::HatDirection::UP) > 0) {
-            _camera->zoom(Camera::ZoomType::TELE);
+            _camera->zoom(speed);
         } else if (static_cast<int>(hat_state & Joystick::HatDirection::DOWN) > 0) {
-            _camera->zoom(Camera::ZoomType::WIDE);
+            _camera->zoom(-speed);
         } else {
-            _camera->zoom(Camera::ZoomType::STOP);
+            _camera->zoom(0.0);
         }
     }
 

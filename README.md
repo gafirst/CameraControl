@@ -46,7 +46,9 @@ This repository contains code used by the [Georgia FIRST Robotics Competition](h
  
  Basic pan-tilt functionality is mapped to the joystick's x and y axes. The speed of these motions is controlled by the paddle at the base of the joystick.
  
- The camera can be zoomed in and out using the direction hat on top of the joystick. Push forward to zoom in, pull back to zoom out.
+ The camera can be zoomed in and out using the direction hat on top of the joystick. Push forward to zoom in, pull back to zoom out. Zoom speed follows the same throttle (paddle at the base) scaling as pan and tilt: you can change speed while holding the hat direction.
+
+Press the hat to the left (exactly left, not a diagonal) to trigger a one-push autofocus command on the camera.
  
  If the camera begins moving unexpectedly, pull the trigger button to send a stop command to the camera.
  

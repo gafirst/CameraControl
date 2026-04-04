@@ -5,17 +5,17 @@
 using namespace std;
 using boost::asio::ip::tcp;
 
-Camera::Camera(std::string name, std::string ip_address, uint8_t default_preset, boost::asio::io_service &io_service)
+Camera::Camera(std::string name, std::string ip_address, uint8_t default_preset, boost::asio::io_context &io_context)
     : _name(name),
       _address(ip_address),
       _default_preset(default_preset),
-      _io_service(io_service),
-      _socket(_io_service)
+      _io_context(io_context),
+      _socket(_io_context)
 {
     cout << "Connecting to camera " << name << " (" << ip_address << ")..." << endl;
 
     try {
-        tcp_connect_with_timeout(ip_address, "5678", boost::posix_time::milliseconds(10));
+        tcp_connect_with_timeout(ip_address, "5678", std::chrono::milliseconds(10));
         cout << "Connected to camera " << name << "!" << endl;
     } catch(const boost::system::system_error &e) {
         if(e.code() == boost::asio::error::operation_aborted) {
@@ -135,6 +135,10 @@ void Camera::zoom(Camera::ZoomType type) {
     send_command({0x81,0x01,0x04,0x07,direction,0xFF});
 }
 
+void Camera::one_push_autofocus() {
+    send_command({0x81, 0x01, 0x04, 0x18, 0x01, 0xFF});
+}
+
 void Camera::stop() {
     rotate();
     zoom();
@@ -157,7 +161,7 @@ void Camera::reconnect() {
     }
 
     try {
-        tcp_connect_with_timeout(_address, "5678", boost::posix_time::milliseconds(10));
+        tcp_connect_with_timeout(_address, "5678", std::chrono::milliseconds(10));
     } catch (const boost::system::system_error &e) {
         if (e.code() == boost::asio::error::operation_aborted) {
             cerr << "ERROR: Connection to camera " << _name << " timed out." << endl;
@@ -166,12 +170,12 @@ void Camera::reconnect() {
 }
 
 void Camera::tcp_connect_with_timeout(const std::string &host, const std::string &service,
-                                      boost::posix_time::time_duration timeout) {
-    tcp::resolver::query query{host, service};
-    tcp::resolver::iterator endpoint_iter = tcp::resolver{_io_service}.resolve(query);
+                                      std::chrono::milliseconds timeout) {
+    tcp::resolver resolver{_io_context};
+    const tcp::resolver::results_type endpoints = resolver.resolve(host, service);
 
-    boost::asio::deadline_timer timer{_io_service};
-    timer.expires_from_now(timeout);
+    boost::asio::steady_timer timer{_io_context};
+    timer.expires_after(timeout);
 
     boost::system::error_code ec = boost::asio::error::would_block;
 
@@ -180,7 +184,7 @@ void Camera::tcp_connect_with_timeout(const std::string &host, const std::string
      * May be related to https://svn.boost.org/trac/boost/ticket/8795
      */
 
-//    boost::asio::async_connect(_socket, endpoint_iter, [&ec](const boost::system::error_code& error, const tcp::resolver::iterator&){ ec = error; });
+//    boost::asio::async_connect(_socket, endpoints, [&ec](const boost::system::error_code& error, const tcp::endpoint&){ ec = error; });
 
 //    timer.async_wait([this](const boost::system::error_code&){
 //        _socket.close();
@@ -188,10 +192,10 @@ void Camera::tcp_connect_with_timeout(const std::string &host, const std::string
 
 //    // Block until the asynchronous operation has completed.
 //    while(ec == boost::asio::error::would_block) {
-//        _io_service.run_one();
+//        _io_context.run_one();
 //    }
 
-    _socket.connect(*endpoint_iter, ec);
+    _socket.connect(endpoints.begin()->endpoint(), ec);
 
     if (ec || !_socket.is_open())
         throw boost::system::system_error(
